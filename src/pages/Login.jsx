@@ -9,8 +9,6 @@ const Login = () => {
 
     const navigate = useNavigate()
 
-    const {viewDetail} = useContext(GalleryContext)
-
     const handleChange = (e)=>{
         setUserLogin({...userLogin,[e.target.name] : e.target.value})
     }
@@ -19,19 +17,19 @@ const Login = () => {
     const handleClick = ()=>{
          const localUSer = useGetLocal("UserData")
         
-         const validateUser = localUSer.find((e)=>e.userEmail === userLogin.userEmail && e.userPassword === userLogin.userPassword)
-     
-        if(validateUser){
-          if(viewDetail){
-            navigate('/about')
-          }else{
-            navigate('/')
-          }
+       
+         const validateUser = localUSer?.find((e)=>e.userEmail === userLogin.userEmail && e.userPassword === userLogin.userPassword)
+ 
 
-         
+        if(validateUser){
           
+          console.log("run");
+          
+          localStorage.setItem("activeUser",JSON.stringify(validateUser))
+          navigate('/about')
+       
         }else{
-          alert("not a valid user")
+          alert("Inavalid User")
         }
          
          
