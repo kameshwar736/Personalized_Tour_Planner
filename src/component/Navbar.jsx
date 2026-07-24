@@ -8,10 +8,9 @@ const Navbar = () => {
     <div>Logo</div>
     <div className=' flex gap-10'>
         <Link to={'/'}>Home</Link>
+         <Link to={'/tours'}>Plan Tour</Link>
         <Link>Blogs</Link>
-        <Link>Profile</Link>
-       
-        
+        <Link>Profile</Link>    
     </div>
    </div>
    </>

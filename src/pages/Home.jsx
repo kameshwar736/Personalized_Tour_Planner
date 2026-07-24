@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 
 import GalleryContext from '../context/GalleryContext'
+import TourPlanner from '../context/TourPlanner'
 
 const Home = () => {
 
@@ -10,7 +11,8 @@ const Home = () => {
   const [stateFilter,setStateFilter] = useState("")
   
 
-
+  const {handleDetail} = useContext(GalleryContext)
+  const {handleTourPlan} = useContext(TourPlanner)
 
   const placesData = import.meta.env.VITE_API_PLACE_URL
   const imageUrl = import.meta.env.VITE_API_SPLASH_KEY
@@ -92,7 +94,7 @@ const Home = () => {
     display = display.filter((e) =>(e.state.toLowerCase()).includes(stateFilter.toLowerCase()))   
   }
 
-  const {handleDetail} = useContext(GalleryContext)
+
   
 
 
@@ -126,7 +128,7 @@ const Home = () => {
               <p>{e.rating}</p>
               <div>
                 <button onClick={()=>handleDetail(e)}>View Detail</button>
-                <button>Plan tour</button>
+                <button onClick={()=>handleTourPlan(e)}>Plan tour</button>
               </div>
             </div>
           
