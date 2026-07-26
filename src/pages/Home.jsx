@@ -154,7 +154,27 @@ const Home = () => {
   }
 
 
+    const stateMap = places.reduce((acc, item) => {
+      const stateName = item.state;
+      const imageUrl = item.image?.[3];
 
+      if (!acc[stateName]) {
+        acc[stateName] = imageUrl;
+      }
+
+      return acc;
+    }, {});
+
+
+
+
+
+  
+  
+
+
+
+  
   
 
 
@@ -228,13 +248,26 @@ const Home = () => {
       <div>
         <input type="text" placeholder='Search' onChange={handleSearch} />
       </div>
-      <div>
-        {
-          state.map((e,i) => (
-            <button key={i} onClick={() => handleState(e)}>{e}</button>
-          ))
-        }
-      </div>
+
+      {/* //State Cards */}
+        <div >
+          <div>
+              <h1>Popular State</h1>
+          </div>
+          <div className='flex gap-10'>
+             {
+            state.map((e, i) => (
+              <button key={i} onClick={() => handleState(e)} className="block cursor-pointer" >
+                <div>
+                  <img src={stateMap?.[e] || "/default.jpg"}  alt={e}  className="w-200 pointer-events-none" />
+                  <p>{e}</p>
+                </div>
+              </button>
+            ))
+          }
+          </div>
+        
+        </div>
 
       <div>
         <h1>Highly Recommeded this season</h1>
