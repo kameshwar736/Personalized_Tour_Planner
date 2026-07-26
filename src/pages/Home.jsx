@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
 
 import GalleryContext from '../context/GalleryContext'
 import TourPlanner from '../context/TourPlanner'
@@ -17,19 +17,55 @@ const Home = () => {
   const {handleDetail} = useContext(GalleryContext)
   const {handleTourPlan} = useContext(TourPlanner)
   const [current, setCurrent] = useState(0);
+  const [trackIndex, setTrackIndex] = useState(1);
+  const [enableTransition, setEnableTransition] = useState(true);
+  const trackIndexRef = useRef(1);
 
   const images = [B3, B1, B2];
+  const carouselSlides = [images[images.length - 1], ...images, images[0]];
+  const SLIDE_WIDTH = 60;
+
+  trackIndexRef.current = trackIndex;
 
   const next = () => {
-    setCurrent((prev) => (prev + 1) % images.length);
+    setTrackIndex((prev) => {
+      if (prev >= carouselSlides.length - 1) return prev;
+      setCurrent((c) => (c + 1) % images.length);
+      return prev + 1;
+    });
   };
 
 
   const prev = () => {
-    setCurrent((prev) =>
-      prev === 0 ? images.length - 1 : prev - 1
-    );
+    setTrackIndex((prev) => {
+      if (prev <= 0) return prev;
+      setCurrent((c) => (c === 0 ? images.length - 1 : c - 1));
+      return prev - 1;
+    });
   };
+
+  const handleBannerTransitionEnd = (e) => {
+    if (e.propertyName !== 'transform') return;
+
+    const idx = trackIndexRef.current;
+
+    if (idx === carouselSlides.length - 1) {
+      setEnableTransition(false);
+      setTrackIndex(1);
+    } else if (idx === 0) {
+      setEnableTransition(false);
+      setTrackIndex(carouselSlides.length - 2);
+    }
+  };
+
+  useEffect(() => {
+    if (!enableTransition) {
+      const frame = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setEnableTransition(true));
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [enableTransition]);
 
    useEffect(() => {
     const interval = setInterval(next, 3000);
@@ -125,45 +161,65 @@ const Home = () => {
 
   return (
     <div >
-     
-      <div className="relative w-full h-[70vh] overflow-hidden">
 
-        {/* Image Container */}
-        <div className="relative h-[350px]">
-          {images.map((img, index) => (
-            <img
-              key={index}
-              src={img}
-              alt=""
-              className={`absolute w-full h-full object-cover transition-opacity duration-700 ${current === index ? "opacity-100" : "opacity-0"
+      <div className="relative w-full h-[70vh] md:h-[60vh] lg:h-[70vh] overflow-hidden bg-black">
+
+        {/* Sliding peek carousel — prev/next visible in side spaces */}
+        <div className="h-full overflow-hidden">
+          <div
+            className={`flex h-full items-center ${enableTransition ? 'transition-transform duration-700 ease-in-out' : ''}`}
+            style={{
+              transform: `translateX(calc((100% - ${SLIDE_WIDTH}%) / 2 - ${trackIndex * SLIDE_WIDTH}%))`,
+            }}
+            onTransitionEnd={handleBannerTransitionEnd}
+          >
+            {carouselSlides.map((img, index) => (
+              <div
+                key={index}
+                className={`h-full w-[60%] flex-shrink-0 flex items-center justify-center ${
+                  index === trackIndex ? 'z-10' : 'z-0'
                 }`}
-            />
-          ))}
+              >
+                <img
+                  src={img}
+                  alt={`banner-${index}`}
+                  className={`object-contain object-center ${
+                    enableTransition ? 'transition-all duration-700 ease-in-out' : ''
+                  } ${
+                    index === trackIndex
+                      ? 'h-full w-full scale-100 opacity-100'
+                      : 'h-[52%] w-[88%] scale-90 opacity-75'
+                  }`}
+                />
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Prev Button */}
+        {/* Prev Button (full-height overlay) */}
         <button
           onClick={prev}
-          className="absolute top-1/2 left-4 -translate-y-1/2 bg-black/50 text-white px-3 py-2 rounded-full hover:bg-black"
+          aria-label="Previous slide"
+          className="absolute inset-y-0 left-0 flex items-center justify-center w-16 md:w-20 bg-gradient-to-r from-black/60 to-transparent hover:from-black/70 text-white z-20"
         >
-          ❮
+          <span className="text-3xl md:text-4xl">❮</span>
         </button>
 
-        {/* Next Button */}
+        {/* Next Button (full-height overlay) */}
         <button
           onClick={next}
-          className="absolute top-1/2 right-4 -translate-y-1/2 bg-black/50 text-white px-3 py-2 rounded-full hover:bg-black"
+          aria-label="Next slide"
+          className="absolute inset-y-0 right-0 flex items-center justify-center w-16 md:w-20 bg-gradient-to-l from-black/60 to-transparent hover:from-black/70 text-white z-20"
         >
-          ❯
+          <span className="text-3xl md:text-4xl">❯</span>
         </button>
 
         {/* Dots */}
-        <div className="absolute bottom-3 w-full flex justify-center gap-2">
+        <div className="absolute bottom-5 left-0 right-0 flex justify-center gap-2 z-20">
           {images.map((_, i) => (
             <div
               key={i}
-              className={`w-3 h-3 rounded-full ${current === i ? "bg-white" : "bg-gray-400"
-                }`}
+              className={`w-3 h-3 rounded-full transition-colors ${current === i ? "bg-white" : "bg-white/40"}`}
             />
           ))}
         </div>

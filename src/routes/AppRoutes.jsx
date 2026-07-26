@@ -7,6 +7,7 @@ import Login from '../pages/Login'
 import ProtectedAuth from './protectedAuth'
 import Tours from '../pages/Tours'
 import Planner from '../component/Planner'
+import Profile from '../pages/Profile'
 
 const AppRoutes = () => {
   return (
@@ -16,6 +17,7 @@ const AppRoutes = () => {
     <Route path='/about' element={<ProtectedAuth><AboutDesti/></ProtectedAuth>}/>
     <Route path='/tours' element={<ProtectedAuth><Tours/></ProtectedAuth>}/>
     <Route path='/planner' element={<ProtectedAuth><Planner/></ProtectedAuth>}/>
+    <Route path='/profile' element={<ProtectedAuth><Profile/></ProtectedAuth>}/>
 
 
 
