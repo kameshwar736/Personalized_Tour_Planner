@@ -1,21 +1,25 @@
-import React, { useContext, useEffect, useRef, useState } from 'react'
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
 
 import GalleryContext from '../context/GalleryContext'
 import TourPlanner from '../context/TourPlanner'
 import B1 from '../assets/banner/Banner1.png'
 import B2 from '../assets/banner/Banner2.png'
 import B3 from '../assets/banner/Banner3.png'
+import useGetLocal from '../customHook/useGetLocal'
+import useSetLocal from '../customHook/useSetLocal'
 
 const Home = () => {
 
   const [places, setPlaces] = useState([])
   const [state, setState] = useState([])
   const [search, setSearch] = useState("")
-  const [stateFilter,setStateFilter] = useState("")
-  
+  const [stateFilter, setStateFilter] = useState("")
+  const [activeUser, setActiveUser] = useState(null)
 
-  const {handleDetail} = useContext(GalleryContext)
-  const {handleTourPlan} = useContext(TourPlanner)
+
+
+  const { handleDetail } = useContext(GalleryContext)
+  const { handleTourPlan } = useContext(TourPlanner)
   const [current, setCurrent] = useState(0);
   const [trackIndex, setTrackIndex] = useState(1);
   const [enableTransition, setEnableTransition] = useState(true);
@@ -67,7 +71,7 @@ const Home = () => {
     }
   }, [enableTransition]);
 
-   useEffect(() => {
+  useEffect(() => {
     const interval = setInterval(next, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -81,9 +85,7 @@ const Home = () => {
     const loadData = async () => {
 
       const storeData = JSON.parse(localStorage.getItem("apiData"))
-      console.log(storeData);
-
-
+     
       if (!storeData) {
         console.log("runn");
 
@@ -99,14 +101,14 @@ const Home = () => {
             const data = await res.json()
             // const data = await res.json();
 
-            console.log(e.name,data);
+            console.log(e.name, data);
 
 
-            
+
 
             return {
               ...e,
-              image: data.results?.map((e)=>e.urls.raw) || "fallback.jpg"
+              image: data.results?.map((e) => e.urls.raw) || "fallback.jpg"
             };
           })
         );
@@ -118,7 +120,7 @@ const Home = () => {
         return console.log("api call");
 
       }
-      console.log("loacal call");
+
 
       setPlaces(storeData);
 
@@ -130,31 +132,41 @@ const Home = () => {
 
   }, []);
 
-  let display = [...places]
+  useEffect(() => {
+    const allUser = JSON.parse(localStorage.getItem("UserData")) || [];
+    const activeUser = JSON.parse(localStorage.getItem("activeUser"));
 
-  const handleState = (state)=>{
-    setStateFilter(state)    
-  }
-
-  const handleSearch = (e) => {
-    setSearch(e.target.value)
-  }
-
-
-
-  if (search ) {
-    display = display.filter((e) =>
-      (e.name.toLowerCase() ).includes(search.toLowerCase()) ||  (e.state.toLowerCase() ).includes(search.toLowerCase())
-    )
-  }
-
-  
-  if(stateFilter){
-    display = display.filter((e) =>(e.state.toLowerCase()).includes(stateFilter.toLowerCase()))   
-  }
+    if (activeUser) {
+      const curUser = allUser.find((e) => e.userEmail === activeUser.userEmail)
+      setActiveUser(curUser)
+    }
+  }, [])
 
 
-    const stateMap = places.reduce((acc, item) => {
+  const display = useMemo(() => {
+    let data = [...places];
+
+    if (search) {
+      data = data.filter((e) =>
+        e.name.toLowerCase().includes(search.toLowerCase()) ||
+        e.state.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    if (stateFilter) {
+      data = data.filter((e) =>
+        e.state.toLowerCase().includes(stateFilter.toLowerCase())
+      );
+    }
+
+    return data;
+  }, [places, search, stateFilter]);
+
+
+
+
+  const stateMap = useMemo(() => {
+    return places.reduce((acc, item) => {
       const stateName = item.state;
       const imageUrl = item.image?.[3];
 
@@ -164,18 +176,67 @@ const Home = () => {
 
       return acc;
     }, {});
+  }, [places]);
+
+  const handleFav = (desti) => {
+    const allUser = JSON.parse(localStorage.getItem("UserData")) || [];
+    const activeUser = JSON.parse(localStorage.getItem("activeUser"));
+
+    if (!activeUser) {
+      alert("Login");
+      return;
+    }
+
+    const updatedUsers = allUser.map((user) => {
+      if (user.userEmail === activeUser.userEmail) {
+        const updatedFav = user.favPlace?.includes(desti)
+          ? user.favPlace
+          : [...(user.favPlace || []), desti];
+
+        return { ...user, favPlace: updatedFav };
+      }
+      return user;
+    });
+
+    localStorage.setItem("UserData", JSON.stringify(updatedUsers));
+
+    const updatedActiveUser = updatedUsers.find(
+      (u) => u.userEmail === activeUser.userEmail
+    );
+
+    localStorage.setItem("activeUser", JSON.stringify(updatedActiveUser));
+
+    setActiveUser(updatedActiveUser);
+  }
+
+
+  const handleRemoveFav = (desti) => {
+    const allUser = JSON.parse(localStorage.getItem("UserData")) || [];
+    const activeUser = JSON.parse(localStorage.getItem("activeUser"));
+
+    let curUser = allUser.find((e) => e.userEmail === activeUser.userEmail);
+
+    const removeFav = curUser.favPlace.filter((e) => e !== desti);
+    curUser.favPlace = removeFav;
+
+    const storeLocal = allUser.map((e) =>
+      e.userEmail === curUser.userEmail ? curUser : e
+    );
+
+    localStorage.setItem("UserData", JSON.stringify(storeLocal));
+    localStorage.setItem("activeUser", JSON.stringify(curUser));
+
+    setActiveUser(curUser);
+  };
+
+
+  const handleSearch = (e)=>{
+    setSearch(e.target.value)
+  }
 
 
 
 
-
-  
-  
-
-
-
-  
-  
 
 
 
@@ -196,20 +257,17 @@ const Home = () => {
             {carouselSlides.map((img, index) => (
               <div
                 key={index}
-                className={`h-full w-[60%] flex-shrink-0 flex items-center justify-center ${
-                  index === trackIndex ? 'z-10' : 'z-0'
-                }`}
+                className={`h-full w-[60%] flex-shrink-0 flex items-center justify-center ${index === trackIndex ? 'z-10' : 'z-0'
+                  }`}
               >
                 <img
                   src={img}
                   alt={`banner-${index}`}
-                  className={`object-contain object-center ${
-                    enableTransition ? 'transition-all duration-700 ease-in-out' : ''
-                  } ${
-                    index === trackIndex
+                  className={`object-contain object-center ${enableTransition ? 'transition-all duration-700 ease-in-out' : ''
+                    } ${index === trackIndex
                       ? 'h-full w-full scale-100 opacity-100'
                       : 'h-[52%] w-[88%] scale-90 opacity-75'
-                  }`}
+                    }`}
                 />
               </div>
             ))}
@@ -244,30 +302,30 @@ const Home = () => {
           ))}
         </div>
       </div>
-      
+
       <div>
         <input type="text" placeholder='Search' onChange={handleSearch} />
       </div>
 
       {/* //State Cards */}
-        <div >
-          <div>
-              <h1>Popular State</h1>
-          </div>
-          <div className='flex gap-10'>
-             {
+      <div >
+        <div>
+          <h1>Popular State</h1>
+        </div>
+        <div className='flex gap-10'>
+          {
             state.map((e, i) => (
               <button key={i} onClick={() => handleState(e)} className="block cursor-pointer" >
                 <div>
-                  <img src={stateMap?.[e] || "/default.jpg"}  alt={e}  className="w-200 pointer-events-none" />
+                  <img src={stateMap?.[e] || "/default.jpg"} alt={e} className="w-200 pointer-events-none" />
                   <p>{e}</p>
                 </div>
               </button>
             ))
           }
-          </div>
-        
         </div>
+
+      </div>
 
       <div>
         <h1>Highly Recommeded this season</h1>
@@ -281,16 +339,26 @@ const Home = () => {
               <p>{e.state}</p>
               <p>{e.rating}</p>
               <div>
-                <button onClick={()=>handleDetail(e)}>View Detail</button>
-                <button onClick={()=>handleTourPlan(e)}>Plan tour</button>
+                {
+                  (activeUser?.favPlace?.includes(e.name) ? (
+                    <button onClick={() => handleRemoveFav(e.name)}>
+                      Remove from Favourite
+                    </button>
+                  ) : (
+                    <button onClick={() => handleFav(e.name)}>
+                      Add to Favourite
+                    </button>
+                  ))}
+              </div>
+              <div>
+                <button onClick={() => handleDetail(e)}>View Detail</button>
+                <button onClick={() => handleTourPlan(e)}>Plan tour</button>
               </div>
             </div>
-          
-          
-      
+
           ))}
         </div>
-        
+
       </div>
     </div>
   )
