@@ -1,8 +1,8 @@
-import React from 'react'
+import { getLocal } from '../utils/storage';
 
-const useGetLocal = (keyName) => {
-    const getData = JSON.parse(localStorage.getItem(keyName)) 
-    return getData
-}
+// Utility wrapper for backward compatibility
+const useGetLocal = (keyName, fallback = null) => {
+  return getLocal(keyName, fallback);
+};
 
-export default useGetLocal
+export default useGetLocal;

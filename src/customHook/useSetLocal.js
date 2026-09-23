@@ -1,13 +1,11 @@
-import React from 'react'
+import { getLocal, setLocal } from '../utils/storage';
 
-const useSetLocal = (keyName,Value) => {
+// Utility wrapper for backward compatibility
+const useSetLocal = (keyName, value) => {
+  const currentData = getLocal(keyName, []);
+  const updatedData = Array.isArray(currentData) ? [...currentData, value] : [value];
+  setLocal(keyName, updatedData);
+  return updatedData;
+};
 
-    const setData = JSON.parse(localStorage.getItem(keyName)) || []
-    setData.push(Value)
-    localStorage.setItem(keyName,JSON.stringify(setData))
- 
-    return alert("Data added successfully");
-    
-}
-
-export default useSetLocal
+export default useSetLocal;

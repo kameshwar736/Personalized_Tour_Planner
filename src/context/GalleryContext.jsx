@@ -1,39 +1,24 @@
-import React, { createContext, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import useSetLocal from '../customHook/useSetLocal'
-import useGetLocal from '../customHook/useGetLocal'
-import AboutDesti from '../pages/AboutDesti'
-import Login from '../pages/Login'
+import React, { createContext, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { setLocal } from '../utils/storage';
 
-const GalleryContext = createContext()
+const GalleryContext = createContext();
 
-export const GalleryProvider = ({children})=>{
+export const GalleryProvider = ({ children }) => {
+  const navigate = useNavigate();
 
+  const handleDetail = (destinationData) => {
+    setLocal('tempData', destinationData);
+    navigate('/about');
+  };
 
-    const navigate = useNavigate()
+  return (
+    <GalleryContext.Provider value={{ handleDetail }}>
+      {children}
+    </GalleryContext.Provider>
+  );
+};
 
-    const handleDetail = (data) => {
+export const useGallery = () => useContext(GalleryContext);
 
-        localStorage.setItem("tempData",JSON.stringify(data))
-
-        const activeUser =  useGetLocal("activeUser")
-
-        if(activeUser){      
-            navigate('/about')
-        }else{
-             navigate('/login')
-        }
-        
-    }
-
-    return(
-        <>
-        <GalleryContext.Provider value={{handleDetail}} >
-            {children}
-        </GalleryContext.Provider>
-        
-        </>
-    )
-}
-
-export default GalleryContext
+export default GalleryContext;

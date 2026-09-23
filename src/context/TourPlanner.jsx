@@ -1,39 +1,38 @@
-import React, { createContext } from 'react'
-import useSetLocal from '../customHook/useSetLocal'
-import { useNavigate } from 'react-router-dom'
+import React, { createContext, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getLocal, setLocal } from '../utils/storage';
 
-const TourPlanner = createContext()
+const TourPlannerContext = createContext();
 
+export const PlanProvider = ({ children }) => {
+  const navigate = useNavigate();
 
+  const handleTourPlan = (tourPlace) => {
+    // Add destination to currentTour array if not already present
+    const currentTours = getLocal('currentTour', []);
+    const exists = currentTours.find((t) => t.id === tourPlace.id);
 
-
-export const PlanProvider = ({children})=>{
-
-    const navigate = useNavigate()
-
-    const handleTourPlan = (tourPlace)=>{
-      
-      useSetLocal("currentTour",tourPlace)  
-      localStorage.setItem("tempPlan",JSON.stringify(tourPlace.id))
-      navigate('/planner')
+    if (!exists) {
+      const updatedTours = [...currentTours, tourPlace];
+      setLocal('currentTour', updatedTours);
     }
 
-    const handleView =(id)=>{
-        localStorage.setItem("tempPlan",JSON.stringify(id))
-      navigate('/planner')
-    }
+    setLocal('tempPlan', tourPlace.id);
+    navigate('/planner');
+  };
 
-    return(
-        <>
-        <TourPlanner.Provider value={{handleTourPlan,handleView}}>
-            {children}
-        </TourPlanner.Provider>
-        </>
-    )
+  const handleView = (id) => {
+    setLocal('tempPlan', id);
+    navigate('/planner');
+  };
 
-}
+  return (
+    <TourPlannerContext.Provider value={{ handleTourPlan, handleView }}>
+      {children}
+    </TourPlannerContext.Provider>
+  );
+};
 
+export const useTourPlanner = () => useContext(TourPlannerContext);
 
-
-
-export default TourPlanner
+export default TourPlannerContext;

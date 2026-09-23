@@ -1,367 +1,391 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useState, useMemo } from 'react';
+import { usePlaces } from '../context/PlacesContext';
+import { useGallery } from '../context/GalleryContext';
+import { useTourPlanner } from '../context/TourPlanner';
+import { useAuth } from '../context/AuthContext';
+import {
+  Search,
+  MapPin,
+  Star,
+  Heart,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  Calendar,
+  Compass,
+  SlidersHorizontal,
+  X
+} from 'lucide-react';
 
-import GalleryContext from '../context/GalleryContext'
-import TourPlanner from '../context/TourPlanner'
-import B1 from '../assets/banner/Banner1.png'
-import B2 from '../assets/banner/Banner2.png'
-import B3 from '../assets/banner/Banner3.png'
-import useGetLocal from '../customHook/useGetLocal'
-import useSetLocal from '../customHook/useSetLocal'
+import B1 from '../assets/banner/Banner1.png';
+import B2 from '../assets/banner/Banner2.png';
+import B3 from '../assets/banner/Banner3.png';
 
 const Home = () => {
+  const { places, loading } = usePlaces();
+  const { handleDetail } = useGallery();
+  const { handleTourPlan } = useTourPlanner();
+  const { activeUser, toggleFavorite } = useAuth();
 
-  const [places, setPlaces] = useState([])
-  const [state, setState] = useState([])
-  const [search, setSearch] = useState("")
-  const [stateFilter, setStateFilter] = useState("")
-  const [activeUser, setActiveUser] = useState(null)
+  const [search, setSearch] = useState('');
+  const [selectedState, setSelectedState] = useState('');
+  const [sortBy, setSortBy] = useState('recommended');
 
+  // Hero carousel state
+  const heroImages = [B1, B2, B3];
+  const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
 
-
-  const { handleDetail } = useContext(GalleryContext)
-  const { handleTourPlan } = useContext(TourPlanner)
-  const [current, setCurrent] = useState(0);
-  const [trackIndex, setTrackIndex] = useState(1);
-  const [enableTransition, setEnableTransition] = useState(true);
-  const trackIndexRef = useRef(1);
-
-  const images = [B3, B1, B2];
-  const carouselSlides = [images[images.length - 1], ...images, images[0]];
-  const SLIDE_WIDTH = 60;
-
-  trackIndexRef.current = trackIndex;
-
-  const next = () => {
-    setTrackIndex((prev) => {
-      if (prev >= carouselSlides.length - 1) return prev;
-      setCurrent((c) => (c + 1) % images.length);
-      return prev + 1;
-    });
+  const nextSlide = () => {
+    setCurrentHeroSlide((prev) => (prev + 1) % heroImages.length);
   };
 
-
-  const prev = () => {
-    setTrackIndex((prev) => {
-      if (prev <= 0) return prev;
-      setCurrent((c) => (c === 0 ? images.length - 1 : c - 1));
-      return prev - 1;
-    });
+  const prevSlide = () => {
+    setCurrentHeroSlide((prev) => (prev === 0 ? heroImages.length - 1 : prev - 1));
   };
 
-  const handleBannerTransitionEnd = (e) => {
-    if (e.propertyName !== 'transform') return;
-
-    const idx = trackIndexRef.current;
-
-    if (idx === carouselSlides.length - 1) {
-      setEnableTransition(false);
-      setTrackIndex(1);
-    } else if (idx === 0) {
-      setEnableTransition(false);
-      setTrackIndex(carouselSlides.length - 2);
-    }
-  };
-
-  useEffect(() => {
-    if (!enableTransition) {
-      const frame = requestAnimationFrame(() => {
-        requestAnimationFrame(() => setEnableTransition(true));
-      });
-      return () => cancelAnimationFrame(frame);
-    }
-  }, [enableTransition]);
-
-  useEffect(() => {
-    const interval = setInterval(next, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-
-  const placesData = import.meta.env.VITE_API_PLACE_URL
-  const imageUrl = import.meta.env.VITE_API_SPLASH_KEY
-
-
-  useEffect(() => {
-    const loadData = async () => {
-
-      const storeData = JSON.parse(localStorage.getItem("apiData"))
-     
-      if (!storeData) {
-        console.log("runn");
-
-        const getData = await fetch(placesData);
-        const changeType = await getData.json();
-
-        const updatedPlaces = await Promise.all(
-          changeType.map(async (e) => {
-            const res = await fetch(
-              `https://api.unsplash.com/search/photos?query=${e.name}&client_id=${imageUrl}`
-            )
-
-            const data = await res.json()
-            // const data = await res.json();
-
-            console.log(e.name, data);
-
-
-
-
-            return {
-              ...e,
-              image: data.results?.map((e) => e.urls.raw) || "fallback.jpg"
-            };
-          })
-        );
-        localStorage.setItem("apiData", JSON.stringify(updatedPlaces))
-        setPlaces(updatedPlaces)
-        const unique = [...new Set(updatedPlaces.map((e) => e.state))]
-        setState(unique)
-
-        return console.log("api call");
-
-      }
-
-
-      setPlaces(storeData);
-
-      const unique = [...new Set(storeData.map((e) => e.state))]
-      setState(unique)
-
-    };
-    loadData();
-
-  }, []);
-
-  useEffect(() => {
-    const allUser = JSON.parse(localStorage.getItem("UserData")) || [];
-    const activeUser = JSON.parse(localStorage.getItem("activeUser"));
-
-    if (activeUser) {
-      const curUser = allUser.find((e) => e.userEmail === activeUser.userEmail)
-      setActiveUser(curUser)
-    }
-  }, [])
-
-
-  const display = useMemo(() => {
-    let data = [...places];
-
-    if (search) {
-      data = data.filter((e) =>
-        e.name.toLowerCase().includes(search.toLowerCase()) ||
-        e.state.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-
-    if (stateFilter) {
-      data = data.filter((e) =>
-        e.state.toLowerCase().includes(stateFilter.toLowerCase())
-      );
-    }
-
-    return data;
-  }, [places, search, stateFilter]);
-
-
-
-
-  const stateMap = useMemo(() => {
-    return places.reduce((acc, item) => {
-      const stateName = item.state;
-      const imageUrl = item.image?.[3];
-
-      if (!acc[stateName]) {
-        acc[stateName] = imageUrl;
-      }
-
-      return acc;
-    }, {});
+  // Unique states
+  const statesList = useMemo(() => {
+    if (!places) return [];
+    return [...new Set(places.map((p) => p.state))].filter(Boolean);
   }, [places]);
 
-  const handleFav = (desti) => {
-    const allUser = JSON.parse(localStorage.getItem("UserData")) || [];
-    const activeUser = JSON.parse(localStorage.getItem("activeUser"));
-
-    if (!activeUser) {
-      alert("Login");
-      return;
-    }
-
-    const updatedUsers = allUser.map((user) => {
-      if (user.userEmail === activeUser.userEmail) {
-        const updatedFav = user.favPlace?.includes(desti)
-          ? user.favPlace
-          : [...(user.favPlace || []), desti];
-
-        return { ...user, favPlace: updatedFav };
-      }
-      return user;
-    });
-
-    localStorage.setItem("UserData", JSON.stringify(updatedUsers));
-
-    const updatedActiveUser = updatedUsers.find(
-      (u) => u.userEmail === activeUser.userEmail
-    );
-
-    localStorage.setItem("activeUser", JSON.stringify(updatedActiveUser));
-
-    setActiveUser(updatedActiveUser);
-  }
-
-
-  const handleRemoveFav = (desti) => {
-    const allUser = JSON.parse(localStorage.getItem("UserData")) || [];
-    const activeUser = JSON.parse(localStorage.getItem("activeUser"));
-
-    let curUser = allUser.find((e) => e.userEmail === activeUser.userEmail);
-
-    const removeFav = curUser.favPlace.filter((e) => e !== desti);
-    curUser.favPlace = removeFav;
-
-    const storeLocal = allUser.map((e) =>
-      e.userEmail === curUser.userEmail ? curUser : e
-    );
-
-    localStorage.setItem("UserData", JSON.stringify(storeLocal));
-    localStorage.setItem("activeUser", JSON.stringify(curUser));
-
-    setActiveUser(curUser);
+  const handleStateFilterClick = (stateName) => {
+    setSelectedState((prev) => (prev === stateName ? '' : stateName));
   };
 
+  const filteredPlaces = useMemo(() => {
+    let result = [...places];
 
-  const handleSearch = (e)=>{
-    setSearch(e.target.value)
-  }
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      result = result.filter(
+        (p) =>
+          p.name?.toLowerCase().includes(q) ||
+          p.state?.toLowerCase().includes(q) ||
+          p.description?.toLowerCase().includes(q)
+      );
+    }
 
+    if (selectedState) {
+      result = result.filter(
+        (p) => p.state?.toLowerCase() === selectedState.toLowerCase()
+      );
+    }
 
+    if (sortBy === 'rating') {
+      result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (sortBy === 'price-low') {
+      result.sort((a, b) => (a.pricePerDay || 0) - (b.pricePerDay || 0));
+    } else if (sortBy === 'price-high') {
+      result.sort((a, b) => (b.pricePerDay || 0) - (a.pricePerDay || 0));
+    }
 
+    return result;
+  }, [places, search, selectedState, sortBy]);
 
-
-
+  const getImageSrc = (item, index = 0) => {
+    if (Array.isArray(item?.image) && item.image[index]) {
+      return item.image[index];
+    }
+    if (typeof item?.image === 'string') {
+      return item.image;
+    }
+    return 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=800&q=80';
+  };
 
   return (
-    <div >
-
-      <div className="relative w-full h-[70vh] md:h-[60vh] lg:h-[70vh] overflow-hidden bg-black">
-
-        {/* Sliding peek carousel — prev/next visible in side spaces */}
-        <div className="h-full overflow-hidden">
-          <div
-            className={`flex h-full items-center ${enableTransition ? 'transition-transform duration-700 ease-in-out' : ''}`}
-            style={{
-              transform: `translateX(calc((100% - ${SLIDE_WIDTH}%) / 2 - ${trackIndex * SLIDE_WIDTH}%))`,
-            }}
-            onTransitionEnd={handleBannerTransitionEnd}
-          >
-            {carouselSlides.map((img, index) => (
-              <div
-                key={index}
-                className={`h-full w-[60%] flex-shrink-0 flex items-center justify-center ${index === trackIndex ? 'z-10' : 'z-0'
-                  }`}
-              >
-                <img
-                  src={img}
-                  alt={`banner-${index}`}
-                  className={`object-contain object-center ${enableTransition ? 'transition-all duration-700 ease-in-out' : ''
-                    } ${index === trackIndex
-                      ? 'h-full w-full scale-100 opacity-100'
-                      : 'h-[52%] w-[88%] scale-90 opacity-75'
-                    }`}
-                />
-              </div>
-            ))}
-          </div>
+    <div className="space-y-10 pb-12">
+      {/* Hero Banner Section */}
+      <section className="relative w-full h-[420px] md:h-[480px] lg:h-[520px] rounded-3xl overflow-hidden shadow-2xl border border-slate-200">
+        <div className="absolute inset-0 bg-slate-900">
+          <img
+            src={heroImages[currentHeroSlide]}
+            alt={`Travel Hero Slide ${currentHeroSlide + 1}`}
+            className="w-full h-full object-cover opacity-75 transition-all duration-700 scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-transparent to-slate-950/40" />
         </div>
 
-        {/* Prev Button (full-height overlay) */}
+        {/* Hero Content Overlay */}
+        <div className="relative z-10 h-full flex flex-col justify-end p-6 md:p-12 max-w-3xl space-y-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/20 border border-white/30 text-white text-xs font-semibold backdrop-blur-md w-fit shadow-sm">
+            <Sparkles className="w-3.5 h-3.5" /> Personalized Tour Planner
+          </div>
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
+            Craft Your Dream <br />
+            <span className="bg-gradient-to-r from-indigo-300 via-purple-200 to-pink-300 bg-clip-text text-transparent">
+              Travel Adventure
+            </span>
+          </h1>
+          <p className="text-sm md:text-base text-slate-200 line-clamp-2 max-w-xl leading-relaxed">
+            Discover breathtaking places, check real-time weather forecasts, build customized day-by-day itineraries, and explore top destinations across India.
+          </p>
+        </div>
+
+        {/* Banner Controls */}
         <button
-          onClick={prev}
+          onClick={prevSlide}
           aria-label="Previous slide"
-          className="absolute inset-y-0 left-0 flex items-center justify-center w-16 md:w-20 bg-gradient-to-r from-black/60 to-transparent hover:from-black/70 text-white z-20"
+          className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/80 hover:bg-white text-slate-900 border border-slate-200 backdrop-blur-md transition-all hover:scale-110 shadow-lg z-20"
         >
-          <span className="text-3xl md:text-4xl">❮</span>
+          <ChevronLeft className="w-5 h-5" />
         </button>
-
-        {/* Next Button (full-height overlay) */}
         <button
-          onClick={next}
+          onClick={nextSlide}
           aria-label="Next slide"
-          className="absolute inset-y-0 right-0 flex items-center justify-center w-16 md:w-20 bg-gradient-to-l from-black/60 to-transparent hover:from-black/70 text-white z-20"
+          className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/80 hover:bg-white text-slate-900 border border-slate-200 backdrop-blur-md transition-all hover:scale-110 shadow-lg z-20"
         >
-          <span className="text-3xl md:text-4xl">❯</span>
+          <ChevronRight className="w-5 h-5" />
         </button>
 
-        {/* Dots */}
-        <div className="absolute bottom-5 left-0 right-0 flex justify-center gap-2 z-20">
-          {images.map((_, i) => (
-            <div
-              key={i}
-              className={`w-3 h-3 rounded-full transition-colors ${current === i ? "bg-white" : "bg-white/40"}`}
+        {/* Banner Indicators */}
+        <div className="absolute bottom-6 right-6 flex items-center gap-2 z-20">
+          {heroImages.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentHeroSlide(idx)}
+              className={`h-2 rounded-full transition-all duration-300 ${
+                currentHeroSlide === idx ? 'w-8 bg-indigo-500' : 'w-2 bg-white/50'
+              }`}
             />
           ))}
         </div>
-      </div>
+      </section>
 
-      <div>
-        <input type="text" placeholder='Search' onChange={handleSearch} />
-      </div>
-
-      {/* //State Cards */}
-      <div >
-        <div>
-          <h1>Popular State</h1>
-        </div>
-        <div className='flex gap-10'>
-          {
-            state.map((e, i) => (
-              <button key={i} onClick={() => handleState(e)} className="block cursor-pointer" >
-                <div>
-                  <img src={stateMap?.[e] || "/default.jpg"} alt={e} className="w-200 pointer-events-none" />
-                  <p>{e}</p>
-                </div>
+      {/* Search and Filter Control Panel */}
+      <section className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-6">
+        <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
+          {/* Search Box */}
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by destination name, state (e.g., Jaipur, Goa, Kerala)..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-11 pr-10 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 text-sm transition-all font-medium"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700"
+              >
+                <X className="w-4 h-4" />
               </button>
-            ))
-          }
+            )}
+          </div>
+
+          {/* Sort Selector */}
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="w-4 h-4 text-slate-500 shrink-0" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-sm font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer hover:bg-slate-100 transition-colors"
+            >
+              <option value="recommended">Recommended</option>
+              <option value="rating">Top Rated</option>
+              <option value="price-low">Price: Low to High</option>
+              <option value="price-high">Price: High to Low</option>
+            </select>
+          </div>
         </div>
 
-      </div>
+        {/* State Filter Pills */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-slate-500 font-bold uppercase tracking-wider">
+            <span>Filter by State</span>
+            {selectedState && (
+              <button
+                onClick={() => setSelectedState('')}
+                className="text-indigo-600 hover:underline lowercase font-semibold"
+              >
+                clear state filter
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button
+              onClick={() => setSelectedState('')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                selectedState === ''
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+              }`}
+            >
+              All States ({places?.length || 0})
+            </button>
+            {statesList.map((st) => {
+              const count = places.filter((p) => p.state === st).length;
+              const isSelected = selectedState === st;
+              return (
+                <button
+                  key={st}
+                  onClick={() => handleStateFilterClick(st)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                  }`}
+                >
+                  <MapPin className="w-3 h-3 text-indigo-500" />
+                  {st} ({count})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
-      <div>
-        <h1>Highly Recommeded this season</h1>
-        <div>
-          {display.map((e) => (
-            <div key={e.id}>
-              <div>
-                <img src={e.image[0]} alt="load" className='w-100 h-100' />
+      {/* Destinations Grid Showcase */}
+      <section className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
+              <Compass className="w-6 h-6 text-indigo-600" />
+              {selectedState ? `${selectedState} Destinations` : 'Popular Destinations'}
+            </h2>
+            <p className="text-sm text-slate-500">
+              Showing {filteredPlaces.length} destination{filteredPlaces.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+        </div>
+
+        {/* Loading Skeleton */}
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div
+                key={i}
+                className="h-80 rounded-2xl bg-white border border-slate-200 animate-pulse p-4 space-y-4"
+              >
+                <div className="h-40 bg-slate-100 rounded-xl" />
+                <div className="h-4 bg-slate-100 rounded w-2/3" />
+                <div className="h-4 bg-slate-100 rounded w-1/3" />
               </div>
-              <h1>{e.name}</h1>
-              <p>{e.state}</p>
-              <p>{e.rating}</p>
-              <div>
-                {
-                  (activeUser?.favPlace?.includes(e.name) ? (
-                    <button onClick={() => handleRemoveFav(e.name)}>
-                      Remove from Favourite
-                    </button>
-                  ) : (
-                    <button onClick={() => handleFav(e.name)}>
-                      Add to Favourite
-                    </button>
-                  ))}
-              </div>
-              <div>
-                <button onClick={() => handleDetail(e)}>View Detail</button>
-                <button onClick={() => handleTourPlan(e)}>Plan tour</button>
-              </div>
+            ))}
+          </div>
+        ) : filteredPlaces.length === 0 ? (
+          /* Empty State */
+          <div className="py-16 text-center bg-white rounded-2xl border border-slate-200 p-8 space-y-4 shadow-sm">
+            <div className="w-16 h-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+              <Search className="w-8 h-8" />
             </div>
+            <h3 className="text-lg font-bold text-slate-900">No destinations found</h3>
+            <p className="text-sm text-slate-500 max-w-sm mx-auto">
+              We couldn't find any places matching "{search}". Try searching for another city, state, or clear your filters.
+            </p>
+            <button
+              onClick={() => {
+                setSearch('');
+                setSelectedState('');
+              }}
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-all shadow-md shadow-indigo-200"
+            >
+              Reset Filters
+            </button>
+          </div>
+        ) : (
+          /* Cards Grid */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredPlaces.map((place) => {
+              const isFav = activeUser?.favPlace?.includes(place.name);
+              const mainImg = getImageSrc(place, 0);
 
-          ))}
-        </div>
+              return (
+                <div
+                  key={place.id || place.name}
+                  className="group relative bg-white rounded-2xl border border-slate-200/90 overflow-hidden hover:border-indigo-300 transition-all duration-300 hover:shadow-xl flex flex-col"
+                >
+                  {/* Image Container */}
+                  <div className="relative h-52 overflow-hidden bg-slate-100">
+                    <img
+                      src={mainImg}
+                      alt={place.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent opacity-80" />
 
-      </div>
+                    {/* State Badge */}
+                    <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-slate-200 text-xs font-bold text-slate-800 flex items-center gap-1 shadow-sm">
+                      <MapPin className="w-3 h-3 text-indigo-600" />
+                      {place.state}
+                    </div>
+
+                    {/* Favorite Heart Button */}
+                    <button
+                      onClick={() => toggleFavorite(place.name)}
+                      className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition-all duration-200 shadow-md ${
+                        isFav
+                          ? 'bg-rose-500 text-white scale-110'
+                          : 'bg-white/90 text-slate-600 hover:text-rose-500 hover:bg-white'
+                      }`}
+                      title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                      <Heart className={`w-4 h-4 ${isFav ? 'fill-white' : ''}`} />
+                    </button>
+
+                    {/* Rating Badge */}
+                    <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-white/95 backdrop-blur-md border border-slate-200 text-amber-600 text-xs font-bold flex items-center gap-1 shadow-sm">
+                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                      <span>{place.rating || '4.8'}</span>
+                    </div>
+                  </div>
+
+                  {/* Details Body */}
+                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                    <div className="space-y-1.5">
+                      <h3 className="text-xl font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                        {place.name}
+                      </h3>
+                      <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                        {place.description ||
+                          `Explore the stunning landscapes, rich culture, and historical landmarks of ${place.name}, ${place.state}.`}
+                      </p>
+                    </div>
+
+                    {/* Specs / Tags */}
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+                      <div>
+                        <span className="text-slate-400 block font-medium">Est. Cost</span>
+                        <span className="text-emerald-700 font-bold text-sm">
+                          ₹{place.pricePerDay || 3500} / day
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-slate-400 block font-medium">Best Season</span>
+                        <span className="text-indigo-600 font-semibold">
+                          {place.bestSeason || 'Oct - Mar'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button
+                        onClick={() => handleDetail(place)}
+                        className="w-full py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-all flex items-center justify-center gap-1"
+                      >
+                        Details
+                      </button>
+                      <button
+                        onClick={() => handleTourPlan(place)}
+                        className="w-full py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-md shadow-indigo-100 flex items-center justify-center gap-1"
+                      >
+                        <Calendar className="w-3.5 h-3.5" />
+                        Plan Trip
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
-  )
-}
+  );
+};
 
-export default Home
+export default Home;
